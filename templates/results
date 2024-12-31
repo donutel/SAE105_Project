@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results</title>
+</head>
+<body>
+    <h1>File Analysis Results</h1>
+
+    <h2>Successful Connections</h2>
+    <table border="1">
+        <tr>
+            <th>Time</th>
+            <th>Source IP</th>
+            <th>Destination IP</th>
+            <th>Status</th>
+        </tr>
+        {% for connection in data['successful'] %}
+            <tr>
+                <td>{{ connection['timestamp'] }}</td>
+                <td>{{ connection['source_ip'] }}</td>
+                <td>{{ connection['dest_ip'] }}</td>
+                <td>{{ connection['status'] }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <h2>Failed Connections</h2>
+    <table border="1">
+        <tr>
+            <th>Time</th>
+            <th>Source IP</th>
+            <th>Destination IP</th>
+            <th>Status</th>
+        </tr>
+        {% for connection in data['failed'] %}
+            <tr>
+                <td>{{ connection['timestamp'] }}</td>
+                <td>{{ connection['source_ip'] }}</td>
+                <td>{{ connection['dest_ip'] }}</td>
+                <td>{{ connection['status'] }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <h2>Errors</h2>
+    <ul>
+        {% for error in data['errors'] %}
+            <li>{{ error }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Unique IPs</h2>
+    <ul>
+        {% for ip in data['ips'] %}
+            <li>{{ ip.split('.')[0] }}.{{ ip.split('.')[1] }}.{{ ip.split('.')[2] }}.{{ ip.split('.')[3] }}</li>
+        {% endfor %}
+    </ul>
+
+</body>
+</html>

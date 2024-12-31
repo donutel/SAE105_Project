@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results</title>
+</head>
+<body>
+    <h1>File Analysis Results</h1>
+    <h2>Successful Connections</h2>
+    <ul>
+        {% for connection in data['successful'] %}
+            <li>{{ connection }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Failed Connections</h2>
+    <ul>
+        {% for connection in data['failed'] %}
+            <li>{{ connection }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Errors</h2>
+    <ul>
+        {% for error in data['errors'] %}
+            <li>{{ error }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Unique IPs</h2>
+    <ul>
+        {% for ip in data['ips'] %}
+            <li>{{ ip }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
