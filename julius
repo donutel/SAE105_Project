@@ -1,0 +1,59 @@
+from flask import Flask, render_template, request, send_file
+import pandas as pd
+import re
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
+
+# === 📌 CONFIGURATION ===
+app = Flask(__name__)
+UPLOAD_FOLDER = r'C:\Users\HP\OneDrive\Desktop\SAE105\uploads\fichier1000.txt'  # Folder for uploaded files
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# === 📌 FUNCTION TO PARSE TCPDUMP DATA ===
+def parse_tcpdump(file_path):
+    # Regular expression to parse TCPDump lines
+    pattern = re.compile(r'(\d{2}:\d{2}:\d{2}\.\d{6}) IP ([^>]+) > ([^:]+): (.*?) length (\d+)')
+    data = []
+    with open(file_path, 'r') as file:
+        for line in file:
+            match = pattern.search(line)
+            if match:
+                time, source, dest, flags, length = match.groups()
+                data.append({
+                    'Time': time,
+                    'Source': source,
+                    'Destination': dest,
+                    'Flags': flags,
+                    'Length': int(length)
+                })
+    df = pd.DataFrame(data)
+    output_file = os.path.join(UPLOAD_FOLDER, 'parsed_data.xlsx')
+    df.to_excel(output_file, index=False)
+    return output_file, df
+
+# === 📌 ROUTES ===
+@app.route('/')
+def index():
+    return render_template('index')
+
+@app.route('/upload', methods=['POST'])
+def upload():
+    file = request.files['file']
+    if file:
+        file_path = os.path.join(UPLOAD_FOLDER, file.filename)  # 📌 Change upload folder if needed
+        file.save(file_path)
+        excel_path, df = parse_tcpdump(file_path)
+        
+        # Generate visualization
+        plt.figure(figsize=(10, 6))
+        sns.countplot(data=df, x='Source')  # 📌 Change visualization type if needed
+        plt.title('Connection Source Frequency')
+        plt.xticks(rotation=45)
+        plt.savefig(os.path.join(UPLOAD_FOLDER, 'source_plot.png'))
+        
+        return send_file(excel_path, as_attachment=True)
+
+# === 📌 RUN THE APP ===
+if __name__ == '__main__':
+    app.run(debug=True)  # 📌 Set debug=False in production

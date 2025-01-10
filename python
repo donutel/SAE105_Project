@@ -1,0 +1,44 @@
+import re
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Function to parse the tcpdump file and extract connection details
+def parse_tcpdump(file_path):
+    connections = []
+    
+    with open(file_path, 'r') as file:
+        for line in file:
+            # Match lines with IP and connection details
+            match = re.match(r'(\d{2}:\d{2}:\d{2}\.\d{6}) IP (\S+) > (\S+): Flags \[(\S+)\]', line)
+            if match:
+                timestamp, source, destination, flags = match.groups()
+                connections.append({
+                    'timestamp': timestamp,
+                    'source': source,
+                    'destination': destination,
+                    'flags': flags
+                })
+    
+    return pd.DataFrame(connections)
+
+# Parse the file
+data = parse_tcpdump('fichier1000.txt')
+
+# Check the parsed data
+print("Parsed data (head):")
+print(data.head())
+
+# Analyze successful and failed connections
+def analyze_connections(data):
+    # Count successful (Flags [P.]) and failed (Flags [R]) connections
+    data['status'] = data['flags'].apply(lambda x: 'successful' if 'P' in x else 'failed')
+    summary = data['status'].value_counts()
+    
+    # Plot the results
+    summary.plot(kind='bar', color=['green', 'red'], title='Connection Status')
+    plt.xlabel('Status')
+    plt.ylabel('Count')
+    plt.show()
+
+# Analyze and visualize
+analyze_connections(data)

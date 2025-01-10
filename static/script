@@ -1,0 +1,20 @@
+// === 📌 CHART CONFIGURATION ===
+const ctx = document.getElementById('tcpChart').getContext('2d');
+const tcpChart = new Chart(ctx, {
+    type: 'bar',  // 📌 Change 'bar' to 'line', 'pie', etc., if needed
+    data: {
+        labels: ['Source A', 'Source B', 'Source C'],  // 📌 Replace with dynamic data if possible //I'll comeback to this
+        datasets: [{
+            label: 'Number of Connections',
+            data: [10, 5, 8],  // 📌 Replace with backend-provided data
+            backgroundColor: ['red', 'blue', 'green']
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: 'TCPDump Connections Overview' }
+        }
+    }
+});

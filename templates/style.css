@@ -1,0 +1,28 @@
+body {
+    background-color: #f8f9fa;
+}
+
+h1 {
+    color: #343a40;
+}
+
+.upload-form {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn {
+    font-size: 16px;
+    padding: 10px 20px;
+}
+
+.charts {
+    margin-top: 40px;
+}
+
+canvas {
+    max-width: 100%;
+    height: auto;
+}

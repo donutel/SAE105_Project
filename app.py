@@ -1,211 +1,170 @@
-#this is for handling upload file in flask
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_file
 import os
 import re
-
-
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['ALLOWED_EXTENSIONS'] = {'txt', 'pcap', 'cap'}
-
-#this is the upload function
-UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')  # you have to be in the path where uploads exists
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-
-@app.route('/')
-def index():
-    return render_template('upload.html')
-#this is the parsing extracting to a file fucntion
-def parse_tcpdump_line(line):
-    # Regular expression to extract timestamp, source IP, destination IP, and connection status
-    pattern = r'(\S+)\s+IP\s+([\d\.]+)\.(\d+)\s+>\s+([\d\.]+)\.(\d+):\s+Flags\s+\[(\w+)\]'
-    match = re.match(pattern, line)
-
-    if match:
-        timestamp = match.group(1)
-        source_ip = match.group(2)
-        dest_ip = match.group(4)
-        status = "success" if match.group(6) == "S" else "failed"
-        return {
-            'timestamp': timestamp,
-            'source_ip': source_ip,
-            'dest_ip': dest_ip,
-            'status': status
-        }
-    return None
-
-def process_tcpdump_file(file_path):
-    successful = []
-    failed = []
-
-    with open(file_path, 'r') as f:
-        for line in f:
-            result = parse_tcpdump_line(line)
-            if result:
-                if result['status'] == 'success':
-                    successful.append(result)
-                else:
-                    failed.append(result)
-
-    return {'successful': successful, 'failed': failed}
-
-# Example usage
-file_path = r'C:\Users\HP\OneDrive\Desktop\SAE105\uploads\fichier1000.txt'
-data = process_tcpdump_file(file_path)
-
-# Print results
-print('Successful Connections:', data['successful'])
-print('Failed Connections:', data['failed'])
-
-
-
-
-
-
-
-import re
+import pandas as pd
+import matplotlib.pyplot as plt
+from scapy.all import RawPcapReader
 from datetime import datetime
 
 
-def extract_info_from_file(file_path):
+app = Flask(__name__)
+UPLOAD_FOLDER = os.path.join(app.root_path, 'uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['ALLOWED_EXTENSIONS'] = {'txt', 'pcap'}
+
+# Check allowed file extensions
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+# Home route to render the upload page
+@app.route('/')
+def index():
+    return render_template('upload.html')
+
+# Function to process txt files
+def process_txt_file(file_path):
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+    return analyze_tcpdump(lines)
+
+
+# Detailed TCPDump analysis function
+def analyze_tcpdump(file_lines):
     connections = {
         "successful": [],
         "failed": [],
+        "dns_queries": [],
         "errors": [],
-        "ips": set()
+        "all_packets": [],
+        "unique_ips": set()
     }
 
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
+    for line in file_lines:
+        # Match successful connections (SYN packets)
+        syn_match = re.match(r'(\d{2}:\d{2}:\d{2}\.\d+)\s+IP\s+([^\s]+)\s+>\s+([^\s]+).*Flags\s+\[S\]', line)
+        if syn_match:
+            timestamp, source_ip, dest_ip = syn_match.groups()
+            connections["successful"].append({
+                "timestamp": timestamp,
+                "source_ip": source_ip,
+                "dest_ip": dest_ip,
+                "status": "Successful (SYN Packet)"
+            })
+            connections["unique_ips"].update([source_ip, dest_ip])
 
-        # Track the state of each connection attempt
-        ongoing_connections = {}
+        # Match failed connections (RST packets)
+        rst_match = re.match(r'(\d{2}:\d{2}:\d{2}\.\d+)\s+IP\s+([^\s]+)\s+>\s+([^\s]+).*Flags\s+\[R\]', line)
+        if rst_match:
+            timestamp, source_ip, dest_ip = rst_match.groups()
+            connections["failed"].append({
+                "timestamp": timestamp,
+                "source_ip": source_ip,
+                "dest_ip": dest_ip,
+                "status": "Failed (RST Packet)"
+            })
+            connections["unique_ips"].update([source_ip, dest_ip])
 
-        for line in lines:
-            # Match SYN packet (Initiation of connection)
-            syn_match = re.match(r'(\d{2}:\d{2}:\d{2}\.\d+)\s+IP\s+([^\s]+)\s+>\s+([^\s]+)\s+Flags\s+\[S\]', line)
-            if syn_match:
-                timestamp, source_ip, dest_ip = syn_match.groups()
-                print(f"Detected SYN packet: {source_ip} -> {dest_ip} at {timestamp}")
-                # Track SYN requests
-                ongoing_connections[(source_ip, dest_ip)] = {'SYN': timestamp}
-                connections["ips"].add(source_ip)
-                connections["ips"].add(dest_ip)
-                continue
+        # Identify DNS queries
+        if 'PTR?' in line or 'A?' in line:
+            connections["dns_queries"].append(line.strip())
 
-            # Match SYN-ACK packet (Response to the SYN)
-            syn_ack_match = re.match(r'(\d{2}:\d{2}:\d{2}\.\d+)\s+IP\s+([^\s]+)\s+>\s+([^\s]+)\s+Flags\s+\[S\.\]', line)
-            if syn_ack_match:
-                timestamp, source_ip, dest_ip = syn_ack_match.groups()
-                print(f"Detected SYN-ACK packet: {source_ip} -> {dest_ip} at {timestamp}")
-                if (dest_ip, source_ip) in ongoing_connections and 'SYN' in ongoing_connections[(dest_ip, source_ip)]:
-                    ongoing_connections[(dest_ip, source_ip)]['SYN-ACK'] = timestamp
-                connections["ips"].add(source_ip)
-                connections["ips"].add(dest_ip)
-                continue
+        # Detect errors (RST, NXDomain, etc.)
+        if 'RST' in line or 'NXDomain' in line or 'error' in line.lower():
+            connections["errors"].append(line.strip())
 
-            # Match ACK packet (Final step of the handshake)
-            ack_match = re.match(r'(\d{2}:\d{2}:\d{2}\.\d+)\s+IP\s+([^\s]+)\s+>\s+([^\s]+)\s+Flags\s+\[\.\]', line)
-            if ack_match:
-                timestamp, source_ip, dest_ip = ack_match.groups()
-                print(f"Detected ACK packet: {source_ip} -> {dest_ip} at {timestamp}")
-                if (source_ip, dest_ip) in ongoing_connections and 'SYN' in ongoing_connections[(source_ip, dest_ip)] and 'SYN-ACK' in ongoing_connections[(source_ip, dest_ip)]:
-                    connections["successful"].append({
-                        "timestamp": timestamp,
-                        "source_ip": source_ip,
-                        "dest_ip": dest_ip,
-                        "status": "successful"
-                    })
-                    print(f"Successful connection: {source_ip} -> {dest_ip} at {timestamp}")
-                    del ongoing_connections[(source_ip, dest_ip)]
-                else:
-                    # Failed connection (missing SYN or SYN-ACK)
-                    connections["failed"].append({
-                        "timestamp": timestamp,
-                        "source_ip": source_ip,
-                        "dest_ip": dest_ip,
-                        "status": "failed"
-                    })
-                    print(f"Failed connection: {source_ip} -> {dest_ip} at {timestamp}")
-                connections["ips"].add(source_ip)
-                connections["ips"].add(dest_ip)
-                continue
-
-            # Detect errors (such as failed connection attempts or protocol errors)
-            if 'RST' in line:  # TCP Reset Flag error
-                connections["errors"].append(f"Error: TCP Reset - Connection aborted detected at {line}")
-            elif 'NXDomain' in line or 'error' in line.lower() or 'fail' in line.lower():  # DNS or Protocol errors
-                connections["errors"].append(f"Error: {line.strip()}")
+        # Store all packet information
+        connections["all_packets"].append(line.strip())
 
     return connections
 
+# Function to generate graphs
+import uuid  # Import this at the top of your file
+
+def generate_graphs(data):
+    successful_count = len(data["successful"])
+    failed_count = len(data["failed"])
+    dns_count = len(data["dns_queries"])
+    errors_count = len(data["errors"])
+
+    # Generate unique filenames for the graphs
+    graph1_filename = f"connection_types_{uuid.uuid4().hex}.png"
+    graph2_filename = f"connection_counts_{uuid.uuid4().hex}.png"
+
+    # Generate a pie chart
+    fig1, ax1 = plt.subplots()
+    ax1.pie([successful_count, failed_count, dns_count, errors_count],
+            labels=["Successful", "Failed", "DNS Queries", "Errors"],
+            autopct='%1.1f%%', startangle=90)
+    ax1.axis('equal')
+    plt.title('Connection Types')
+    plt.savefig(os.path.join(app.root_path, 'static', graph1_filename))
+    plt.close()
+
+    # Generate a bar chart
+    fig2, ax2 = plt.subplots()
+    ax2.bar(["Successful", "Failed", "DNS Queries", "Errors"],
+            [successful_count, failed_count, dns_count, errors_count],
+            color=['green', 'red', 'blue', 'orange'])
+    plt.title('Connection Counts')
+    plt.ylabel('Count')
+    plt.savefig(os.path.join(app.root_path, 'static', graph2_filename))
+    plt.close()
+
+    # Return the graph filenames
+    return graph1_filename, graph2_filename
 
 
-
-
-
-def check_successful_connection(packets):
-
-    successful_connections = []
-    
-    for i in range(1, len(packets) - 1):
-        packet1 = packets[i - 1]
-        packet2 = packets[i]
-        packet3 = packets[i + 1]
-
-        # Look for SYN packets (client-to-server)
-        if 'S' in packet1['Flags'] and 'A' not in packet1['Flags']:
-            # Look for SYN-ACK response (server-to-client)
-            if 'S' in packet2['Flags'] and 'A' in packet2['Flags']:
-                # Look for final ACK from client to complete handshake
-                if 'A' in packet3['Flags'] and 'S' not in packet3['Flags']:
-                    successful_connections.append((packet1, packet2, packet3))
-    
-    return successful_connections
-
-
-
-
-
+# Upload route to handle file uploads and analysis
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
         return redirect(request.url)
+
     file = request.files['file']
     if file and allowed_file(file.filename):
-        filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-        file.save(filename)
-        data = extract_info_from_file(filename)  # Analyze the uploaded file
-        
-        # Check if there are any errors and prepare a summary for display
-        error_messages = data["errors"] if data["errors"] else ["No errors detected"]
-        
-        return render_template('results.html', data=data, errors=error_messages)
-    return 'Invalid file format'
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        file.save(file_path)
+
+        try:
+            # Process the file based on extension
+            if file.filename.endswith('.txt'):
+                data = process_txt_file(file_path)
+            elif file.filename.endswith('.pcap'):
+                data = process_pcap_file(file_path)
+            else:
+                return 'Unsupported file format'
+
+            # Generate a unique Excel filename
+            excel_filename = f"tcpdump_analysis_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
+            excel_path = os.path.join(app.config['UPLOAD_FOLDER'], excel_filename)
+
+            # Convert successful and failed connections to DataFrames and save to Excel
+            successful_df = pd.DataFrame(data["successful"])
+            failed_df = pd.DataFrame(data["failed"])
+
+            with pd.ExcelWriter(excel_path) as writer:
+                successful_df.to_excel(writer, sheet_name="Successful Connections", index=False)
+                failed_df.to_excel(writer, sheet_name="Failed Connections", index=False)
+
+            # Pass the filename to the results page
+            return render_template('results.html', data=data, excel_url=url_for('download_excel', filename=excel_filename))
+        except Exception as e:
+            return f"An error occurred: {str(e)}"
+    else:
+        return 'Invalid file format'
+
+
+# Route to download the Excel report
+@app.route('/download_excel/<filename>')
+def download_excel(filename):
+    excel_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    return send_file(excel_path, as_attachment=True)
 
 
 
+# Run the Flask app
 if __name__ == '__main__':
     app.run(debug=True)
-if not os.path.exists(app.config['UPLOAD_FOLDER']):
-    os.makedirs(app.config['UPLOAD_FOLDER'])
-
-
-
-
-
-
-
-
-# Example usage:
-file_path = r'C:\Users\HP\OneDrive\Desktop\SAE105\uploads\fichier1000'
-data = extract_info_from_file(file_path)
-print("Successful connections:", data["successful"])
-print("Failed connections:", data["failed"])
-print("Errors:", data["errors"])
-print("Unique IPs:", data["ips"])
 
 

@@ -1,0 +1,10 @@
+11:42:04.123456 IP ClientA.12345 > ServerB.http: Flags [S], seq 1234567890, win 65535, options [mss 1460,sackOK,TS val 123456 ecr 0,nop,wscale 6], length 0
+11:42:04.223456 IP ServerB.http > ClientA.12345: Flags [S.], seq 987654321, ack 1234567891, win 65535, options [mss 1460,sackOK,TS val 123457 ecr 123456,nop,wscale 6], length 0
+11:42:04.323456 IP ClientA.12345 > ServerB.http: Flags [.], ack 987654322, win 65535, options [nop,nop,TS val 123458 ecr 123457], length 0
+11:42:05.123456 IP ClientA.12346 > ServerB.http: Flags [S], seq 1234567891, win 65535, options [mss 1460,sackOK,TS val 123459 ecr 0,nop,wscale 6], length 0
+11:42:05.223456 IP ServerB.http > ClientA.12346: Flags [R], length 0
+11:42:05.323456 IP ClientA.12347 > DNS.server: 12345+ A? example.com. (32)
+11:42:05.423456 IP DNS.server > ClientA.12347: 12345 1/0/0 A 93.184.216.34 (48)
+11:42:06.123456 IP ClientA.12348 > ServerB.http: Flags [S], seq 1234567892, win 65535, options [mss 1460,sackOK,TS val 123460 ecr 0,nop,wscale 6], length 0
+11:42:06.223456 IP ServerB.http > ClientA.12348: Flags [S.], seq 987654322, ack 1234567893, win 65535, options [mss 1460,sackOK,TS val 123461 ecr 123460,nop,wscale 6], length 0
+11:42:06.323456 IP ClientA.12348 > ServerB.http: Flags [.], ack 987654323, win 65535, options [nop,nop,TS val 123462 ecr 123461], length 0

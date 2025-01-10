@@ -3,13 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Upload</title>
+    <title>TCPDump Analysis - Upload File</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <h1>Upload a File</h1>
-    <form action="/upload" method="POST" enctype="multipart/form-data">
-        <input type="file" name="file" accept=".txt, .pcap, .cap" required>
-        <button type="submit">Upload</button>
-    </form>
+    <div class="container mt-5">
+        <h1 class="text-center">TCPDump Analysis</h1>
+        <p class="text-center">Upload your TCPDump file (.txt or .pcap) for analysis.</p>
+
+        <!-- File Upload Form -->
+        <form method="POST" action="{{ url_for('upload_file') }}" enctype="multipart/form-data">
+            <!-- Hidden File Input -->
+            <input type="file" name="file" id="fileInput" style="display: none;" required>
+            <!-- Custom Button -->
+            <button type="button" id="customButton" class="btn btn-primary btn-lg btn-block">Upload File</button>
+            <!-- Submit Button -->
+            <button type="submit" class="btn btn-success btn-lg btn-block mt-2">Analyze File</button>
+        </form>
+    </div>
+
+    <!-- Custom JavaScript -->
+    <script>
+        // Get the hidden file input and custom button
+        const fileInput = document.getElementById('fileInput');
+        const customButton = document.getElementById('customButton');
+
+        // When the custom button is clicked, trigger the hidden file input
+        customButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Update the button text when a file is selected
+        fileInput.addEventListener('change', () => {
+            customButton.textContent = fileInput.files[0].name;
+        });
+    </script>
 </body>
 </html>

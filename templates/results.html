@@ -3,36 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Results</title>
+    <title>TCPDump Analysis Results</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='/static/css/style.css') }}">
 </head>
 <body>
-    <h1>File Analysis Results</h1>
-    <h2>Successful Connections</h2>
-    <ul>
-        {% for connection in data['successful'] %}
-            <li>{{ connection }}</li>
-        {% endfor %}
-    </ul>
+    <div class="container mt-5">
+        <h1 class="text-center">Analysis Results</h1>
 
-    <h2>Failed Connections</h2>
-    <ul>
-        {% for connection in data['failed'] %}
-            <li>{{ connection }}</li>
-        {% endfor %}
-    </ul>
+        <div class="charts">
+            <h3>Connection Types</h3>
+            <canvas id="connectionTypesChart"></canvas>
 
-    <h2>Errors</h2>
-    <ul>
-        {% for error in data['errors'] %}
-            <li>{{ error }}</li>
-        {% endfor %}
-    </ul>
+            <h3 class="mt-4">Connection Counts</h3>
+            <canvas id="connectionCountsChart"></canvas>
+        </div>
 
-    <h2>Unique IPs</h2>
-    <ul>
-        {% for ip in data['ips'] %}
-            <li>{{ ip }}</li>
-        {% endfor %}
-    </ul>
+        <div class="text-center mt-5">
+            <a href="{{ excel_url }}" class="btn btn-success">Download Excel Report</a>
+        </div>
+    </div>
+
+
+
+
+
+    
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+    <script>
+        // Data for the charts
+        const connectionTypesData = [{{ data['successful']|length }}, {{ data['failed']|length }}, {{ data['dns_queries']|length }}, {{ data['errors']|length }}];
+        const connectionCountsData = [{{ data['successful']|length }}, {{ data['failed']|length }}, {{ data['dns_queries']|length }}, {{ data['errors']|length }}];
+
+        // Connection Types Chart
+        const ctx1 = document.getElementById('connectionTypesChart').getContext('2d');
+        new Chart(ctx1, {
+            type: 'pie',
+            data: {
+                labels: ['Successful', 'Failed', 'DNS Queries', 'Errors'],
+                datasets: [{
+                    data: connectionTypesData,
+                    backgroundColor: ['#28a745', '#dc3545', '#007bff', '#ffc107']
+                }]
+            }
+        });
+
+        // Connection Counts Chart
+        const ctx2 = document.getElementById('connectionCountsChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: ['Successful', 'Failed', 'DNS Queries', 'Errors'],
+                datasets: [{
+                    data: connectionCountsData,
+                    backgroundColor: ['#28a745', '#dc3545', '#007bff', '#ffc107']
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
 </body>
 </html>
